@@ -13,7 +13,7 @@ if _CLI_MODE:
     os.environ["MCP_ENABLE_OAUTH21"] = "false"
     os.environ["WORKSPACE_MCP_STATELESS_MODE"] = "false"
 
-from auth.oauth_config import reload_oauth_config, is_stateless_mode  # noqa: E402
+from auth.oauth_config import OAuthConfig, reload_oauth_config, is_stateless_mode  # noqa: E402
 from core.log_formatter import EnhancedLogFormatter, configure_file_logging  # noqa: E402
 from core.utils import check_credentials_directory_permissions  # noqa: E402
 from core.server import server, set_transport_mode, configure_server_for_http  # noqa: E402
@@ -221,7 +221,11 @@ def main():
     base_uri = os.getenv("WORKSPACE_MCP_BASE_URI", "http://localhost")
     host = os.getenv("WORKSPACE_MCP_HOST", "0.0.0.0")
     external_url = os.getenv("WORKSPACE_EXTERNAL_URL")
-    display_url = external_url if external_url else f"{base_uri}:{port}"
+    display_url = (
+        external_url
+        if external_url
+        else OAuthConfig._build_base_url(base_uri, port)
+    )
 
     safe_print("🔧 Google Workspace MCP Server")
     safe_print("=" * 35)
