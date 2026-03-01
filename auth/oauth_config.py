@@ -27,7 +27,7 @@ class OAuthConfig:
         # Base server configuration
         self.base_uri = os.getenv("WORKSPACE_MCP_BASE_URI", "http://localhost")
         self.port = int(os.getenv("PORT", os.getenv("WORKSPACE_MCP_PORT", "8000")))
-        self.base_url = f"{self.base_uri}:{self.port}"
+        self.base_url = self._build_base_url(self.base_uri, self.port)
 
         # External URL for reverse proxy scenarios
         self.external_url = os.getenv("WORKSPACE_EXTERNAL_URL")
@@ -72,6 +72,27 @@ class OAuthConfig:
 
         # Ensure FastMCP's Google provider picks up our existing configuration
         self._apply_fastmcp_google_env()
+
+    @staticmethod
+    def _build_base_url(base_uri: str, port: int) -> str:
+        """Build the base URL, appending the port only when necessary.
+
+        When ``WORKSPACE_MCP_BASE_URI`` is explicitly set to a public URL
+        (e.g. behind a reverse proxy like Railway) the port should **not** be
+        appended — the proxy terminates TLS and routes traffic to the internal
+        port transparently.  The port is only appended for the default
+        ``http://localhost`` value used during local development.
+        """
+        parsed = urlparse(base_uri)
+        # If the URI already contains an explicit port, honour it as-is.
+        if parsed.port is not None:
+            return base_uri.rstrip("/")
+        # For non-localhost hosts the caller provided the public origin;
+        # don't tack on the internal listen port.
+        if parsed.hostname and parsed.hostname != "localhost":
+            return base_uri.rstrip("/")
+        # localhost / default — append the port so local dev works.
+        return f"{base_uri.rstrip('/')}:{port}"
 
     def _get_redirect_uri(self) -> str:
         """
